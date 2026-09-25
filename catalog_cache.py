@@ -15,12 +15,18 @@ MINOR_VERSION_MIN=1
 logger = logging.getLogger(__name__)
 
 class CatalogCache:
+    """
+    A CatalogCache caches the set of Channels returned by the OpenShift API.
+    """
 
-    def __init__(self):
-        pass
+    def __init__(self, architecture):
+        self._architecture = architecture
+
+    def architecture(self):
+        return self._architecture
 
     @staticmethod
-    # The pseudo-RESTful API returns 200 success and a particular reponse when a channel isn't found,
+    # The pseudo-RESTful OpenShift API returns 200 success and a particular reponse when a channel isn't found,
     # instead of accepting the version in the URL and returning 404 as a RESTful API would.
     # Recognise this special reponse.
     def _is_nonexistent_channel_response(response):
@@ -48,7 +54,8 @@ class CatalogCache:
             response = requests.get(
                 API_URL,
                 params={
-                    'channel': channel_name
+                    'channel': channel_name,
+                    'arch': self.architecture()
                 }
             )
             if self._is_nonexistent_channel_response(response):
@@ -71,11 +78,11 @@ class CatalogCache:
         return channels
 
     @staticmethod
-    def _cache_filename():
-        return "%s/catalog-cache" % (CACHE_DIR)
+    def _cache_filename(architecture):
+        return "%s/ocpupgrade-catalog-cache-%s" % (CACHE_DIR, architecture)
 
     def get_channel_names(self):
-        cache_filename = self._cache_filename()
+        cache_filename = self._cache_filename(self.architecture())
         try:
             cache_file = open(cache_filename, "r")
             ret = json.load(cache_file)
@@ -90,7 +97,7 @@ class CatalogCache:
             ret = self._get_uncached()
             try:
                 with open(cache_filename, "w") as cache_file:
-                    cache_file.write(json.dumps(ret))
+                    cache_file.write(json.dumps(ret, indent=4))
                 logger.debug("Wrote cache %s" % cache_filename)
             except:
                 logger.debug("Failed to write cache %s" % cache_filename)

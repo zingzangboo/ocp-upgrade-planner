@@ -3,12 +3,28 @@ from node import Node
 from edge import Edge
 
 class Channel:
-
+    """
+    A Channel represents a set of available OpenShift versions and upgrade paths between them.
+    Channel have names, which are of the following structure:
+    1. A channel name prefix, currently "stable", "fast", "eus" or several other values;
+    2. A "-" separator;
+    3. An OpenShift major version number, such as "4";
+    4. A "." separator;
+    5. An OpenShift minor version number, such as "16".
+    Each channel contains all OpenShift minor versions matching its name, and also all of the preceding minor versions, if any.
+    For example, channel "stable-4.16" contains OpenShift versions 4.16.x (for all values of x),
+    and also OpenShift versions 4.15.y (for all values of y).
+    However channel "stable-4.1" contains OpenShift versions 4.1.x (for all values of x),
+    but does not also contain any OpenShift versions 4.0.y (for any value of y), because those versions never existed,
+    because the first release of OpenShift 4 had minor version 1, not 0.
+    """
     def __init__(self, channel_name, json_data):
         self._name = channel_name
         self._json = json_data
-        print(json.dumps(json_data))
         self._normalise_graph()
+
+    def __repr__(self):
+        return "Channel(%s)" % self.name()
 
     def _normalise_graph(self):
         self._nodes = []
@@ -19,7 +35,7 @@ class Channel:
             (from_node_index, to_node_index) = edge
             from_node = self._nodes[from_node_index]
             to_node = self._nodes[to_node_index]
-            edge = Edge(from_node, to_node)
+            edge = Edge(self, from_node, to_node)
             self._edges.append(edge)
             from_node.add_edge(edge)
             to_node.add_edge(edge)
@@ -47,3 +63,8 @@ class Channel:
 
     def condition_edges(self):
         return self._json['conditional_edges']
+
+    def assert_valid(self):
+        assert len(self.nodes()) > 0
+        for node in self.nodes():
+            node.assert_valid()

@@ -3,10 +3,14 @@ from channel_cache import ChannelCache
 from channel import Channel
 
 class Catalog:
+    """
+    A Catalog represents a set of channels.
+    """
 
-    def __init__(self):
-        self._catalog_cache = CatalogCache()
-        self._channel_cache = ChannelCache()
+    def __init__(self, architecture):
+        self._architecture = architecture
+        self._catalog_cache = CatalogCache(self.architecture())
+        self._channel_cache = ChannelCache(self.architecture())
         self._channels = []
         self._channels_by_name = dict()
         for channel_name in self.channel_names():
@@ -14,6 +18,9 @@ class Catalog:
             channel = Channel(channel_name, channel_json)
             self._channels.append(channel)
             self._channels_by_name[channel.name()] = channel
+
+    def architecture(self):
+        return self._architecture
 
     def channel_names(self):
         return self._catalog_cache.get_channel_names()
@@ -23,3 +30,8 @@ class Catalog:
     
     def channels(self):
         return self._channels
+
+    def assert_valid(self):
+        assert len(self.channels()) > 0
+        for channel in self.channels():
+            channel.assert_valid()
