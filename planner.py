@@ -4,10 +4,14 @@ from sys import exit
 from catalog import Catalog
 from merged_catalog import MergedCatalog
 from collections import deque
+import argparse
 import logging
 logger = logging.getLogger(__name__)
 
-ARCH='amd64'
+# FIXME: THe API seems to provide no way to discover this set of architectures, so we hard-code it here :-(
+# Note that the x86_64 architecture is named 'amd64' here. There is no 'intel64' architecture.
+ALL_ARCHES=['amd64', 'aarch64', 'ppc64le', 's390x']
+DEFAULT_ARCH='amd64'
 
 def dump_catalog(catalog):
     logger.debug(repr(catalog))
@@ -101,14 +105,7 @@ def path_equals(path1, path2):
 def dump_path(path):
     print(" -> ".join(node.version() for node in path))
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    catalog = Catalog(ARCH)
-    catalog.assert_valid()
-    # dump_catalog(catalog)
-    merged_catalog = MergedCatalog(catalog)
-    # dump_merged_catalog(merged_catalog)
-    merged_catalog.assert_valid()
+def run_tests(merged_catalog):
     # Expected to fail, because there are no upgrade paths to version 4.1.10
     path = shortest_path(merged_catalog, '4.1.5', '4.1.10')
     assert not path
@@ -123,10 +120,37 @@ if __name__ == "__main__":
     assert not path
     # Expected to succeed in one step
     path = shortest_path(merged_catalog, '4.1.4', '4.1.9')
-    dump_path(path)
+    # dump_path(path)
     assert path_equals(path, [ '4.1.4', '4.1.9' ])
     # Expected to succeed
     path = shortest_path(merged_catalog, '4.1.4', '4.22.14')
-    dump_path(path)
+    # dump_path(path)
     assert path_equals(path, [ '4.1.4', '4.1.18', '4.1.26', '4.1.38', '4.2.29', '4.3.35', '4.4.27', '4.5.35', '4.6.26', '4.7.34', '4.8.17', '4.9.40', '4.10.20', '4.11.47', '4.12.35', '4.13.51', '4.14.41', '4.15.52', '4.16.42', '4.17.36', '4.18.27', '4.19.29', '4.20.34', '4.21.31', '4.22.14' ])
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    parser = argparse.ArgumentParser(
+        description="OCP Upgrade Planner",
+        epilog="Default ARCH is " + DEFAULT_ARCH
+    )
+    parser.add_argument('--architecture', default=DEFAULT_ARCH, choices=ALL_ARCHES)
+    parser.add_argument('--from-version', required=True)
+    parser.add_argument('--to-version', required=True)
+    args = parser.parse_args()
+    logger.info("Downloading catalogs from the Interwebs...")
+    catalog = Catalog(args.architecture)
+    catalog.assert_valid()
+    # dump_catalog(catalog)
+    logger.info("Analysing downloaded catalogs...")
+    merged_catalog = MergedCatalog(catalog)
+    # dump_merged_catalog(merged_catalog)
+    merged_catalog.assert_valid()
+    # run_tests(merged_catalog)
+    logger.info("Calculating shortest path...")
+    path = shortest_path(merged_catalog, args.from_version, args.to_version)
+    if len(path):
+        print("The shortest upgrade path from OpenShift version %s to version %s is:" % (args.from_version, args.to_version))
+        dump_path(path)
+    else:
+        print("There is no upgrade path from OpenShift version %s to version %s." % (args.from_version, args.to_version))
     exit(0)

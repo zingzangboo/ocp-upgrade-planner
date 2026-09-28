@@ -5,9 +5,9 @@ import logging
 
 CACHE_DIR=os.getenv('TMPDIR', '/tmp')
 API_URL='https://api.openshift.com/api/upgrades_info/v1/graph'
-# TODO: There exist additional channel name prefixes, such as "eus" and "fast". Do we care about these?
-# If these have different upgrade edges to "stable", we may need to query them to find the shortest upgrade path.
-CHANNEL_NAME_PREFIXES=["stable"]
+# Inspect all channels, in case there are different paths in different channels.
+# FIXME: The API seems to offer no way to discover these channel name prefixes.
+CHANNEL_NAME_PREFIXES=["stable", "eus", "fast", "candidate"]
 # OpenShift 3 is obsolete at time of writing
 MAJOR_VERSION_MIN=4
 # There was no OpenShift 4.0. The first release of OpenShift 4 was 4.1.
