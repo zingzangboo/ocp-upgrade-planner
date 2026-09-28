@@ -22,8 +22,6 @@ class MergedNode:
         # These are maps from version to the MergedEdge object
         self._edges_to_me = dict()
         self._edges_from_me = dict()
-        if self.version() == "4.22.11":
-            logger.debug("FOUND 4.22.11")
         self.merge_in_node(node)
 
     def __repr__(self):
@@ -90,7 +88,14 @@ class MergedNode:
                     (other_node.version(), other_node.url(), self.version(), self.url())
                 )
             )
-        # Merge edges (which are expected to differ)
+
+    def merge_edges(self, catalog, other_node):
+        """Merge edges (which are expected to differ)"""
+        assert other_node.version() == self.version()
+        self.merge_edges_to(catalog, other_node)
+        self.merge_edges_from(catalog, other_node)
+
+    def merge_edges_to(self, catalog, other_node):
         assert other_node.version() == self.version()
         for edge_to_me in other_node.edges_to():
             assert edge_to_me.to_node() is other_node
@@ -102,8 +107,12 @@ class MergedNode:
                 existing_merged_edge.merge_in_edge(edge_to_me)
             else:
                 channel = edge_to_me.channel()
-                new_merged_edge = MergedEdge(channel, from_node, self)
+                merged_from_node = catalog.get_merged_node_by_node(from_node)
+                new_merged_edge = MergedEdge(channel, merged_from_node, self)
                 self._edges_to_me[from_node_version] = new_merged_edge
+
+    def merge_edges_from(self, catalog, other_node):
+        assert other_node.version() == self.version()
         for edge_from_me in other_node.edges_from():
             assert edge_from_me.from_node() is other_node
             assert edge_from_me.from_node().version() == self.version()
@@ -114,7 +123,8 @@ class MergedNode:
                 existing_merged_edge.merge_in_edge(edge_from_me)
             else:
                 channel = edge_from_me.channel()
-                new_merged_edge = MergedEdge(channel, self, to_node)
+                merged_to_node = catalog.get_merged_node_by_node(to_node)
+                new_merged_edge = MergedEdge(channel, self, merged_to_node)
                 self._edges_from_me[to_node_version] = new_merged_edge
 
     def edges_from(self):

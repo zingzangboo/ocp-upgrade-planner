@@ -42,6 +42,24 @@ class Channel:
         self._nodes_by_version = dict()
         for node in self.nodes():
             self._nodes_by_version[node.version()] = node
+        # Merge the conditionalEdges into the edges
+        for conditional_edge_object in self._json['conditionalEdges']:
+            cond_obj_edges = conditional_edge_object['edges']
+            risks = conditional_edge_object['risks']
+            # TODO: Factor out the risks into a separate list, instead of copying them into each Edge.
+            # Also, there may be duplication across different conditionalEdges/Channels/etc that we should fix by merging them.
+            for cond_obj_edge in cond_obj_edges:
+                (from_version, to_version) = (cond_obj_edge['from'], cond_obj_edge['to'])
+                existing_edge = self.get_edge_by_versions(from_version, to_version)
+                if existing_edge is None:
+                    # An edge that is in conditionalEdges, but not in edges. Add it to edges with its risks.
+                    new_edge = Edge(self, from_node, to_node, risks)
+                    self._edges.append(new_edge)
+                    from_node.add_edge(new_edge)
+                    to_node.add_edge(new_edge)
+                else:
+                    # An edge in conditionalEdges that was already seen in edges. Add its risks to the existing edge.
+                    existing_edge.set_risks(risks)
 
     def get_node_by_version(self, version):
         return self._nodes_by_version[version]
@@ -57,6 +75,16 @@ class Channel:
 
     def edges(self):
         return self._edges
+
+    def get_edge_by_nodes(self, from_node, to_node):
+        for edge in self.edges():
+            if edge.from_node() is from_node and edge.to_node() is to_node:
+                return edge
+
+    def get_edge_by_versions(self, from_version, to_version):
+        from_node = self.get_node_by_version(from_version)
+        to_node = self.get_node_by_version(to_version)
+        return self.get_edge_by_nodes(from_node, to_node)
 
     def risks(self):
         return self._json['risks']

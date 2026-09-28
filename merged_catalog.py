@@ -23,6 +23,10 @@ class MergedCatalog:
                 else:
                     new_merged_node = MergedNode(node)
                     self._version_to_node[version] = new_merged_node
+        for channel in self.catalog().channels():
+            for node in channel.nodes():
+                merged_node = self.get_merged_node_by_node(node)
+                merged_node.merge_edges(self, node)
 
     def catalog(self):
         return self._catalog
@@ -34,3 +38,18 @@ class MergedCatalog:
         assert len(self.merged_nodes()) > 0
         for merged_node in self.merged_nodes():
             merged_node.assert_valid()
+
+    def get_node_by_version(self, version):
+        return self._version_to_node.get(version)
+
+    def edges(self):
+        for merged_node in self.merged_nodes():
+            for edge in merged_node.edges_to():
+                yield edge
+            for edge in merged_node.edges_from():
+                yield edge
+
+    def get_merged_node_by_node(self, node):
+        merged_node = self.get_node_by_version(node.version())
+        assert merged_node is not None
+        return merged_node
