@@ -1,4 +1,6 @@
-import json
+"""
+channel.py
+"""
 from node import Node
 from edge import Edge
 
@@ -27,16 +29,25 @@ class Channel:
     def __init__(self, channel_name, json_data):
         self._name = channel_name
         self._json = json_data
+        self._nodes = []
+        self._edges = []
+        self._nodes_by_version = {}
         self._normalise_graph()
 
     def __repr__(self):
-        return "Channel(%s)" % self.name()
+        return f"Channel({self.name()})"
 
-    def _normalise_graph(self):
-        self._nodes = []
+    def _add_nodes(self):
+        """
+        Build a list of all of the Nodes in this Channel.
+        """
         for node_json in self._json['nodes']:
             self._nodes.append(Node(node_json))
-        self._edges = []
+
+    def _add_edges(self):
+        """
+        Build the Edges in this Channel.
+        """
         for edge in self._json['edges']:
             (from_node_index, to_node_index) = edge
             from_node = self._nodes[from_node_index]
@@ -45,13 +56,25 @@ class Channel:
             self._edges.append(edge)
             from_node.add_edge(edge)
             to_node.add_edge(edge)
-        self._nodes_by_version = dict()
+
+    def _build_nodes_by_version(self):
+        """
+        Build a mapping from OpenShift versions to Edges.
+        """
         for node in self.nodes():
             self._nodes_by_version[node.version()] = node
-        # Merge the conditionalEdges into the edges
+
+    def _merge_conditional_edges(self):
+        """
+        Merge the conditionalEdges into the Edges.
+        Because there is duplication, there could be inconsistency.
+        Find, warn about, and fix any inconsistencies found.
+        """
         for conditional_edge_object in self._json['conditionalEdges']:
             cond_obj_edges = conditional_edge_object['edges']
             risks = conditional_edge_object['risks']
+            # Do not fail CI merely because of a to-do list item.
+            # pylint: disable=fixme
             # TODO: Factor out the risks into a separate list, instead of
             # copying them into each Edge.
             # Also, there may be duplication of the same risks across
@@ -67,6 +90,8 @@ class Channel:
                 if existing_edge is None:
                     # An edge that is in conditionalEdges, but not in edges.
                     # Add it to edges with its risks.
+                    from_node = self.get_node_by_version(from_version)
+                    to_node = self.get_node_by_version(to_version)
                     new_edge = Edge(self, from_node, to_node, risks)
                     self._edges.append(new_edge)
                     from_node.add_edge(new_edge)
@@ -76,38 +101,81 @@ class Channel:
                     # in edges. Add its risks to the existing edge.
                     existing_edge.set_risks(risks)
 
+    def _normalise_graph(self):
+        self._add_nodes()
+        self._add_edges()
+        self._build_nodes_by_version()
+        self._merge_conditional_edges()
+
     def get_node_by_version(self, version):
+        """
+        Given an OpenShift version string, return the Node in this Channel
+        that represents that version of OpenShift.
+        """
         return self._nodes_by_version[version]
 
     def name(self):
+        """
+        Return the name of this Channel.
+        """
         return self._name
 
     def version(self):
+        """
+        Return the version of this channel.
+        At time of writing, all channels had version 1, so it is not clear
+        what this attribute means.
+        """
         return self._json['version']
 
     def nodes(self):
+        """
+        Enumerate over all Nodes in this Channel.
+        """
         return self._nodes
 
     def edges(self):
+        """
+        Enumerate over all Edges in this Channel.
+        """
         return self._edges
 
     def get_edge_by_nodes(self, from_node, to_node):
+        """
+        Given two Nodes, find the Edge in this Channel that represents
+        an upgrade of OpenShift from the first Node to the second Node.
+        """
         for edge in self.edges():
             if edge.from_node() is from_node and edge.to_node() is to_node:
                 return edge
+        return None
 
     def get_edge_by_versions(self, from_version, to_version):
+        """
+        Given two OpenShift version strings, find the Edge in this Channel
+        that represents an upgrade of OpenShift from the first version to
+        the second version.
+        """
         from_node = self.get_node_by_version(from_version)
         to_node = self.get_node_by_version(to_version)
         return self.get_edge_by_nodes(from_node, to_node)
 
     def risks(self):
+        """
+        Enumerate over all risks in this Channel.
+        """
         return self._json['risks']
 
     def condition_edges(self):
+        """
+        Enumerate over all conditional edges in this Channel.
+        """
         return self._json['conditional_edges']
 
     def assert_valid(self):
+        """
+        Assert that this Channel is valid.
+        """
         assert len(self.nodes()) > 0
         for node in self.nodes():
             node.assert_valid()

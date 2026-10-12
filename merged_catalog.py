@@ -1,4 +1,6 @@
-from channel import Channel
+"""
+merged_catalog.py
+"""
 from merged_node import MergedNode
 
 
@@ -14,8 +16,10 @@ class MergedCatalog:
         self._build_merged_catalog()
 
     def _build_merged_catalog(self):
-        """Build the set of merged nodes"""
-        self._version_to_node = dict()
+        """
+        Build the set of merged nodes
+        """
+        self._version_to_node = {}
         for channel in self.catalog().channels():
             for node in channel.nodes():
                 version = node.version()
@@ -31,27 +35,47 @@ class MergedCatalog:
                 merged_node.merge_edges(self, node)
 
     def catalog(self):
+        """
+        Return the catalog that this MergedCatalog was created from.
+        """
         return self._catalog
 
     def merged_nodes(self):
+        """
+        Return a list of all MergedNodes in this MergedCatalog.
+        """
         return self._version_to_node.values()
 
     def assert_valid(self):
+        """
+        Assert that this MergedCatalog is valid.
+        """
         assert len(self.merged_nodes()) > 0
         for merged_node in self.merged_nodes():
             merged_node.assert_valid()
 
     def get_node_by_version(self, version):
+        """
+        Given an OpenShift version string, return the MergedNode that
+        represents that version in this MergedCatalog.
+        """
         return self._version_to_node.get(version)
 
     def edges(self):
+        """
+        Enumerate all of the MergedEdges in this MergedCatalog.
+        This represents every possible OpenShift upgrade path
+        known to the catalog.
+        """
         for merged_node in self.merged_nodes():
-            for edge in merged_node.edges_to():
-                yield edge
-            for edge in merged_node.edges_from():
-                yield edge
+            yield from merged_node.edges_to()
+            yield from merged_node.edges_from()
 
     def get_merged_node_by_node(self, node):
+        """
+        Given a Node representing an OpenShift version, return the MergedNode
+        that represents that version in this MergedCatalog.
+        """
         merged_node = self.get_node_by_version(node.version())
         assert merged_node is not None
         return merged_node

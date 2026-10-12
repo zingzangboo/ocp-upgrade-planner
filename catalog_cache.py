@@ -1,12 +1,18 @@
+"""
+catalog_cache.py
+"""
 import os
-import requests
 import json
+import locale
 import logging
+import requests
 
 CACHE_DIR = os.getenv('TMPDIR', '/tmp')
 API_URL = 'https://api.openshift.com/api/upgrades_info/v1/graph'
 # Inspect all channels, in case there are different paths in different
 # channels.
+# Do not fail CI merely because of an item needing fixing.
+# pylint: disable=fixme
 # FIXME: The API seems to offer no way to discover these channel name prefixes.
 CHANNEL_NAME_PREFIXES = ["stable", "eus", "fast", "candidate"]
 # OpenShift 3 is obsolete at time of writing
@@ -14,6 +20,10 @@ MAJOR_VERSION_MIN = 4
 # There was no OpenShift 4.0. The first release of OpenShift 4 was 4.1.
 MINOR_VERSION_MIN = 1
 logger = logging.getLogger(__name__)
+"""
+Timeout for accesses to the API in seconds.
+"""
+API_TIMEOUT = 3600
 
 
 class CatalogCache:
@@ -25,6 +35,9 @@ class CatalogCache:
         self._architecture = architecture
 
     def architecture(self):
+        """
+        Return this Catalog's processor achitecture.
+        """
         return self._architecture
 
     @staticmethod
@@ -40,15 +53,15 @@ class CatalogCache:
             raise KeyError("No version in response")
         if 1 != payload["version"]:
             raise ValueError(
-                "Unrecognised response version '%s'" % payload["version"]
+                f"Unrecognised response version '{payload["version"]}'"
             )
         if "nodes" not in payload:
             raise KeyError(
-                "No nodes in response %s" % json.dumps(payload)
+                "No nodes in response {json.dumps(payload)}"
             )
         if "edges" not in payload:
             raise KeyError(
-                "No edges in response %s" % json.dumps(payload)
+                "No edges in response {json.dumps(payload)}"
             )
         return len(payload["nodes"]) == 0 and len(payload["edges"]) == 0
 
@@ -58,17 +71,18 @@ class CatalogCache:
         # :-(
         channels = []
         minor_version = MINOR_VERSION_MIN
-        while (True):
-            channel_name = "%s-%s.%s" % (
-                channel_name_prefix, major_version, minor_version
+        while True:
+            channel_name = (
+                f"{channel_name_prefix}-{major_version}.{minor_version}"
             )
-            logger.debug("Requesting '%s'" % channel_name)
+            logger.debug("Requesting '%s'", channel_name)
             response = requests.get(
                 API_URL,
                 params={
                     'channel': channel_name,
                     'arch': self.architecture()
-                }
+                },
+                timeout=API_TIMEOUT
             )
             if self._is_nonexistent_channel_response(response):
                 return channels
@@ -85,7 +99,7 @@ class CatalogCache:
             channels_this_major_version = self._channels_in_major_version(
                 channel_name_prefix, major_version
             )
-            if len(channels_this_major_version):
+            if channels_this_major_version:
                 channels = channels + channels_this_major_version
             else:
                 break
@@ -94,26 +108,34 @@ class CatalogCache:
 
     @staticmethod
     def _cache_filename(architecture):
-        return "%s/ocpupgrade-catalog-cache-%s" % (CACHE_DIR, architecture)
+        return f"{CACHE_DIR}/ocpupgrade-catalog-cache-{architecture}"
 
     def get_channel_names(self):
+        """
+        Enumerate the names of the Channels in this Catalog.
+        """
         cache_filename = self._cache_filename(self.architecture())
         try:
-            cache_file = open(cache_filename, "r")
-            ret = json.load(cache_file)
-            logger.debug("Read cache %s" % cache_filename)
+            with open(
+                cache_filename, "r", encoding=locale.getpreferredencoding(False)
+            ) as cache_file:
+                ret = json.load(cache_file)
+            logger.debug("Read cache %s", cache_filename)
         except FileNotFoundError:
-            logger.debug("No cache %s" % cache_filename)
+            logger.debug("No cache %s", cache_filename)
             ret = None
         except json.JSONDecodeError:
-            logger.debug("Corrupt cache %s" % cache_filename)
+            logger.debug("Corrupt cache %s", cache_filename)
             ret = None
         if ret is None:
             ret = self._get_uncached()
             try:
-                with open(cache_filename, "w") as cache_file:
+                with open(
+                    cache_filename, "w",
+                    encoding=locale.getpreferredencoding(False)
+                ) as cache_file:
                     cache_file.write(json.dumps(ret, indent=4))
-                logger.debug("Wrote cache %s" % cache_filename)
+                logger.debug("Wrote cache %s", cache_filename)
             except IOError:
-                logger.warning("Failed to write cache %s" % cache_filename)
+                logger.warning("Failed to write cache %s", cache_filename)
         return ret
