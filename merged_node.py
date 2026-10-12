@@ -1,15 +1,19 @@
 from merged_edge import MergedEdge
 import logging
 logger = logging.getLogger(__name__)
-FIRST_RELEASE_VERSION='4.1.0'
+FIRST_RELEASE_VERSION = '4.1.0'
+
 
 class MergedNode:
     """
     A MergedNode represents a particular version of OpenShift.
     Any given OpenShift version can be present in multiple channels.
-    This means that multiple semantically equivalent Node objects may be present in different Channel objects.
-    Class MergedNode represents a unique OpenShift version, merged from the multiple Node objects referring to that version.
-    While merging the duplicate nodes, we also check that they are consistent with each other.
+    This means that multiple semantically equivalent Node objects may
+    be present in different Channel objects.
+    Class MergedNode represents a unique OpenShift version, merged from
+    the multiple Node objects referring to that version.
+    While merging the duplicate nodes, we also check that they are consistent
+    with each other.
     """
 
     def __init__(self, node):
@@ -48,44 +52,51 @@ class MergedNode:
     def merge_in_node(self, other_node):
         # Detect conflicting versions
         if other_node.version() != self.version():
-            raise(
-                ValueError(
-                    "Cannot merge node for version %s into MergedNode for version %s" %
-                    (other_node.version(), self.version())
-                )
+            raise ValueError(
+                "Cannot merge node for version %s "
+                "into MergedNode for version %s" %
+                (other_node.version(), self.version())
             )
         # Detect conflicting payloads
         if other_node.payload() != self.payload():
-            raise(
-                ValueError(
-                    "Node for version %s has payload %s, but MergedNode for version %s has payload %s" %
-                    (other_node.version(), other_node.payload(), self.version(), self.payload())
+            raise ValueError(
+                "Node for version %s has payload %s, "
+                "but MergedNode for version %s has payload %s" %
+                (
+                    other_node.version(), other_node.payload(),
+                    self.version(), self.payload()
                 )
             )
         # Detect conflicting descriptions
         if other_node.description() != self.description():
-            raise(
-                ValueError(
-                    "Node for version %s has description %s, but MergedNode for version %s has description %s" %
-                    (other_node.version(), other_node.description(), self.version(), self.description())
+            raise ValueError(
+                "Node for version %s has description %s, "
+                "but MergedNode for version %s has description %s" %
+                (
+                    other_node.version(), other_node.description(),
+                    self.version(), self.description()
                 )
             )
         # Merge channel names (which are expected to differ)
         self._channel_names.update(other_node.channel_names())
         # Detect conflicting manifests
         if other_node.manifest() != self.manifest():
-            raise(
-                ValueError(
-                    "Node for version %s has manifest %s, but MergedNode for version %s has manifest %s" %
-                    (other_node.version(), other_node.manifest(), self.version(), self.manifest())
+            raise ValueError(
+                "Node for version %s has manifest %s, "
+                "but MergedNode for version %s has manifest %s" %
+                (
+                    other_node.version(), other_node.manifest(),
+                    self.version(), self.manifest()
                 )
             )
         # Detect conflicting urls
         if other_node.url() != self.url():
-            raise(
-                ValueError(
-                    "Node for version %s has url %s, but MergedNode for version %s has url %s" %
-                    (other_node.version(), other_node.url(), self.version(), self.url())
+            raise ValueError(
+                "Node for version %s has url %s, "
+                "but MergedNode for version %s has url %s" %
+                (
+                    other_node.version(), other_node.url(),
+                    self.version(), self.url()
                 )
             )
 
@@ -134,12 +145,22 @@ class MergedNode:
         return self._edges_to_me.values()
 
     def assert_valid(self):
-        # We would like to be able to assert this, but we can't, because the API claims there are no upgrade paths to some versions.
-        # For example, at time of writing, there are no edges from any other version to version 4.1.10.
-        # Presumable, a customer must have done a fresh install to reach such a version.
-        # assert FIRST_RELEASE_VERSION == self.version() or len(self.edges_to()) > 0
-        # We would like to be able to assert this, but we can't, because the API claims there are no upgrade paths from some versions.
-        # For example, at time of writing, there are no edges from version 4.2.0-0.hotfix-2020-09-19-234758 to any other version.
-        # Presumable, if a customer is using such a version, they cannot upgrade and must reinstall.
-        # assert len(self.edges_from()) > 0
-        pass
+        # We would like to be able to assert this, but we can't, because the
+        # API claims there are no upgrade paths to some versions.
+        # For example, at time of writing, there are no edges from any other
+        # version to version 4.1.10.
+        # Presumable, a customer must have done a fresh install to reach such
+        # a version.
+        if False:
+            assert (
+                FIRST_RELEASE_VERSION == self.version() or
+                len(self.edges_to()) > 0
+            )
+        # We would like to be able to assert this, but we can't, because the
+        # API claims there are no upgrade paths from some versions.
+        # For example, at time of writing, there are no edges from version
+        # 4.1.41 to any other version.
+        # Presumable, if a customer is using such a version, they cannot
+        # upgrade and must reinstall.
+        if False:
+            assert len(self.edges_from()) > 0

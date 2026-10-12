@@ -1,8 +1,9 @@
 class MergedEdge:
     """
-    A MergedEdge represents a permitted direct upgrade from one particular version of OpenShift
-    to another particular version of OpenShift.
-    A particular direct upgrade can be present in multiple channels, so a MergedEdge has a set of such channels.
+    A MergedEdge represents a permitted direct upgrade from one particular
+    version of OpenShift to another particular version of OpenShift.
+    A particular direct upgrade can be present in multiple channels,
+    so a MergedEdge has a set of such channels.
     """
 
     def __init__(self, channel, from_node, to_node):
@@ -12,7 +13,11 @@ class MergedEdge:
         self._to_node = to_node
 
     def __repr__(self):
-        return "MergedEdge(%s -> %s, channels=%s)" % (self.from_node().version(), self.to_node().version(), repr(self.channels()))
+        return "MergedEdge(%s -> %s, channels=%s)" % (
+            self.from_node().version(),
+            self.to_node().version(),
+            repr(self.channels())
+        )
 
     def channels(self):
         return self._channels

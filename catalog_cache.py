@@ -3,16 +3,18 @@ import requests
 import json
 import logging
 
-CACHE_DIR=os.getenv('TMPDIR', '/tmp')
-API_URL='https://api.openshift.com/api/upgrades_info/v1/graph'
-# Inspect all channels, in case there are different paths in different channels.
+CACHE_DIR = os.getenv('TMPDIR', '/tmp')
+API_URL = 'https://api.openshift.com/api/upgrades_info/v1/graph'
+# Inspect all channels, in case there are different paths in different
+# channels.
 # FIXME: The API seems to offer no way to discover these channel name prefixes.
-CHANNEL_NAME_PREFIXES=["stable", "eus", "fast", "candidate"]
+CHANNEL_NAME_PREFIXES = ["stable", "eus", "fast", "candidate"]
 # OpenShift 3 is obsolete at time of writing
-MAJOR_VERSION_MIN=4
+MAJOR_VERSION_MIN = 4
 # There was no OpenShift 4.0. The first release of OpenShift 4 was 4.1.
-MINOR_VERSION_MIN=1
+MINOR_VERSION_MIN = 1
 logger = logging.getLogger(__name__)
+
 
 class CatalogCache:
     """
@@ -26,30 +28,40 @@ class CatalogCache:
         return self._architecture
 
     @staticmethod
-    # The pseudo-RESTful OpenShift API returns 200 success and a particular reponse when a channel isn't found,
-    # instead of accepting the version in the URL and returning 404 as a RESTful API would.
+    # The pseudo-RESTful OpenShift API returns 200 success and a particular
+    # reponse when a channel isn't found, instead of accepting the version in
+    # the URL and returning 404 as a RESTful API would.
     # Recognise this special reponse.
     def _is_nonexistent_channel_response(response):
         if 200 != response.status_code:
             response.raise_for_status()
         payload = response.json()
         if "version" not in payload:
-            raise(KeyError("No version in response"))
+            raise KeyError("No version in response")
         if 1 != payload["version"]:
-            raise(ValueError("Unrecognised response version '%s'" % payload["version"]))
+            raise ValueError(
+                "Unrecognised response version '%s'" % payload["version"]
+            )
         if "nodes" not in payload:
-            raise(KeyError("No nodes in response %s" % json.dumps(payload)))
+            raise KeyError(
+                "No nodes in response %s" % json.dumps(payload)
+            )
         if "edges" not in payload:
-            raise(KeyError("No edges in response %s" % json.dumps(payload)))
+            raise KeyError(
+                "No edges in response %s" % json.dumps(payload)
+            )
         return len(payload["nodes"]) == 0 and len(payload["edges"]) == 0
 
     def _channels_in_major_version(self, channel_name_prefix, major_version):
         # The API seems not to provide a way to discover channels.
-        # So we are forced to brute-force attack it in order to discover them :-(
+        # So we are forced to brute-force attack it in order to discover them
+        # :-(
         channels = []
         minor_version = MINOR_VERSION_MIN
         while (True):
-            channel_name = "%s-%s.%s" % (channel_name_prefix, major_version, minor_version)
+            channel_name = "%s-%s.%s" % (
+                channel_name_prefix, major_version, minor_version
+            )
             logger.debug("Requesting '%s'" % channel_name)
             response = requests.get(
                 API_URL,
@@ -65,11 +77,14 @@ class CatalogCache:
 
     def _get_uncached(self):
         # The API seems not to provide a way to discover channels.
-        # So we are forced to brute-force attack it in order to discover them :-(
+        # So we are forced to brute-force attack it in order to discover them
+        # :-(
         channels = []
         for channel_name_prefix in CHANNEL_NAME_PREFIXES:
             major_version = MAJOR_VERSION_MIN
-            channels_this_major_version = self._channels_in_major_version(channel_name_prefix, major_version)
+            channels_this_major_version = self._channels_in_major_version(
+                channel_name_prefix, major_version
+            )
             if len(channels_this_major_version):
                 channels = channels + channels_this_major_version
             else:
@@ -99,6 +114,6 @@ class CatalogCache:
                 with open(cache_filename, "w") as cache_file:
                     cache_file.write(json.dumps(ret, indent=4))
                 logger.debug("Wrote cache %s" % cache_filename)
-            except:
-                logger.debug("Failed to write cache %s" % cache_filename)
+            except IOError:
+                logger.warning("Failed to write cache %s" % cache_filename)
         return ret

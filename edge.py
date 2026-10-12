@@ -1,7 +1,7 @@
 class Edge:
     """
-    An Edge represents a permitted direct upgrade from one particular version of OpenShift
-    to another particular version of OpenShift.
+    An Edge represents a permitted direct upgrade from one particular version
+    of OpenShift to another particular version of OpenShift.
     It has a reference to the channel in which it was found.
     """
 
@@ -12,7 +12,9 @@ class Edge:
         self._risks = risks
 
     def __repr__(self):
-        return "Edge(%s -> %s)" % (self.from_node().version(), self.to_node().version())
+        return "Edge(%s -> %s)" % (
+            self.from_node().version(), self.to_node().version()
+        )
 
     def channel(self):
         return self._channel
@@ -27,4 +29,4 @@ class Edge:
         return self._risks
 
     def set_risks(self, risks):
-        self._risks = risks;
+        self._risks = risks

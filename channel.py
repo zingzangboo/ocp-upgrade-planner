@@ -2,20 +2,26 @@ import json
 from node import Node
 from edge import Edge
 
+
 class Channel:
     """
-    A Channel represents a set of available OpenShift versions and upgrade paths between them.
+    A Channel represents a set of available OpenShift versions and upgrade
+    paths between them.
     Channel have names, which are of the following structure:
-    1. A channel name prefix, currently "stable", "fast", "eus" or several other values;
+    1. A channel name prefix, currently "stable", "fast", "eus"
+       or several other values;
     2. A "-" separator;
     3. An OpenShift major version number, such as "4";
     4. A "." separator;
     5. An OpenShift minor version number, such as "16".
-    Each channel contains all OpenShift minor versions matching its name, and also all of the preceding minor versions, if any.
-    For example, channel "stable-4.16" contains OpenShift versions 4.16.x (for all values of x),
-    and also OpenShift versions 4.15.y (for all values of y).
-    However channel "stable-4.1" contains OpenShift versions 4.1.x (for all values of x),
-    but does not also contain any OpenShift versions 4.0.y (for any value of y), because those versions never existed,
+    Each channel contains all OpenShift minor versions matching its name,
+    and also all of the preceding minor versions, if any.
+    For example, channel "stable-4.16" contains OpenShift versions 4.16.x
+    (for all values of x), and also OpenShift versions 4.15.y (for all values
+    of y).
+    However channel "stable-4.1" contains OpenShift versions 4.1.x
+    (for all values of x), but does not also contain any OpenShift
+    versions 4.0.y (for any value of y), because those versions never existed,
     because the first release of OpenShift 4 had minor version 1, not 0.
     """
     def __init__(self, channel_name, json_data):
@@ -46,19 +52,28 @@ class Channel:
         for conditional_edge_object in self._json['conditionalEdges']:
             cond_obj_edges = conditional_edge_object['edges']
             risks = conditional_edge_object['risks']
-            # TODO: Factor out the risks into a separate list, instead of copying them into each Edge.
-            # Also, there may be duplication across different conditionalEdges/Channels/etc that we should fix by merging them.
+            # TODO: Factor out the risks into a separate list, instead of
+            # copying them into each Edge.
+            # Also, there may be duplication of the same risks across
+            # different conditionalEdges/Channels/etc, which we should fix
+            # by merging them.
             for cond_obj_edge in cond_obj_edges:
-                (from_version, to_version) = (cond_obj_edge['from'], cond_obj_edge['to'])
-                existing_edge = self.get_edge_by_versions(from_version, to_version)
+                (from_version, to_version) = (
+                    cond_obj_edge['from'], cond_obj_edge['to']
+                )
+                existing_edge = self.get_edge_by_versions(
+                    from_version, to_version
+                )
                 if existing_edge is None:
-                    # An edge that is in conditionalEdges, but not in edges. Add it to edges with its risks.
+                    # An edge that is in conditionalEdges, but not in edges.
+                    # Add it to edges with its risks.
                     new_edge = Edge(self, from_node, to_node, risks)
                     self._edges.append(new_edge)
                     from_node.add_edge(new_edge)
                     to_node.add_edge(new_edge)
                 else:
-                    # An edge in conditionalEdges that was already seen in edges. Add its risks to the existing edge.
+                    # An edge in conditionalEdges that was already seen
+                    # in edges. Add its risks to the existing edge.
                     existing_edge.set_risks(risks)
 
     def get_node_by_version(self, version):

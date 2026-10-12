@@ -1,15 +1,17 @@
-import os;
-import json;
-import requests;
+import os
+import json
+import requests
 import logging
 
-CACHE_DIR=os.getenv('TMPDIR', '/tmp')
-API_URL='https://api.openshift.com/api/upgrades_info/v1/graph'
+CACHE_DIR = os.getenv('TMPDIR', '/tmp')
+API_URL = 'https://api.openshift.com/api/upgrades_info/v1/graph'
 logger = logging.getLogger(__name__)
+
 
 class ChannelCache:
     """
-    A ChannelCache caches the data returned from the OpenShift API for individual Channels.
+    A ChannelCache caches the data returned from the OpenShift API for
+    individual Channels.
     """
 
     def __init__(self, architecture):
@@ -30,10 +32,14 @@ class ChannelCache:
 
     @staticmethod
     def _cache_filename(channel_name, architecture):
-        return "%s/ocpupgrade-channel-cache-%s-%s" % (CACHE_DIR, channel_name, architecture)
+        return "%s/ocpupgrade-channel-cache-%s-%s" % (
+            CACHE_DIR, channel_name, architecture
+        )
 
     def get_channel_data(self, channel_name):
-        cache_filename = self._cache_filename(channel_name, self.architecture())
+        cache_filename = self._cache_filename(
+            channel_name, self.architecture()
+        )
         try:
             cache_file = open(cache_filename, "r")
             ret = json.load(cache_file)
@@ -50,6 +56,6 @@ class ChannelCache:
                 with open(cache_filename, "w") as cache_file:
                     cache_file.write(json.dumps(ret, indent=4))
                 logger.debug("Wrote cache %s" % cache_filename)
-            except:
-                logger.debug("Failed to write cache %s" % cache_filename)
+            except IOError:
+                logger.warning("Failed to write cache %s" % cache_filename)
         return ret

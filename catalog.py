@@ -2,6 +2,7 @@ from catalog_cache import CatalogCache
 from channel_cache import ChannelCache
 from channel import Channel
 
+
 class Catalog:
     """
     A Catalog represents a set of channels.
@@ -27,7 +28,7 @@ class Catalog:
 
     def get_channel_by_name(self, channel_name):
         return self._channels_by_name[channel_name]
-    
+
     def channels(self):
         return self._channels
 

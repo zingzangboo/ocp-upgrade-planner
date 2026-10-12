@@ -1,10 +1,12 @@
 from channel import Channel
 from merged_node import MergedNode
 
+
 class MergedCatalog:
     """
     A MergedCatalog represents the merged/de-duplicated version of a Catalog,
-    wherein all nodes and edges in all channels in the catalog have been merged.
+    wherein all nodes and edges in all channels in the catalog have been
+    merged.
     """
 
     def __init__(self, catalog):
