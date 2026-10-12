@@ -87,7 +87,7 @@ def find_min(q, dist):
     return min_node
 
 
-def analyse_dijkstra(graph, source):
+def analyse_dijkstra(graph, source, allow_risks):
     """
     Analyse the given upgrade graph. Find all upgrade paths from starting
     version source.
@@ -106,13 +106,14 @@ def analyse_dijkstra(graph, source):
         u = find_min(q, dist)
         q.remove(u)
         for edge in graph.edges():
+            if edge.risks() and not allow_risks:
+                continue
             (u, v) = (edge.from_node(), edge.to_node())
             alt = dist[u] + distance(u, v)
             if alt < dist[v]:
                 dist[v] = alt
                 logger.debug(
-                    "dijkstra: Setting prev[%s] to %s", repr(v), repr(u)
-                )
+                    "dijkstra: Setting prev[%s] to %s", repr(v), repr(u))
                 prev[v] = u
     return prev
 
@@ -133,18 +134,35 @@ def build_shortest_path(prev, source, target):
     return seq
 
 
-def shortest_path(merged_cat, from_version, to_version):
+def shortest_path_risks(merged_cat, source, target, allow_risks=False):
+    """
+    Given a MergedCatalog, use Djikstra's algorithm to find the shortest
+    upgrade path from the OpenShift version represented by the MergedNode
+    from_version, to the OpenShift version represented by the MergedNode
+    to_version, optionally allowing risks to be present.
+    """
+    prev = analyse_dijkstra(merged_cat, source, allow_risks)
+    shortest = build_shortest_path(prev, source, target)
+    return shortest
+
+
+def shortest_path(merged_cat, from_version, to_version, allow_risks=False):
     """
     Given a MergedCatalog, use Djikstra's algorithm to find the shortest
     upgrade path from the OpenShift version represented by the MergedNode
     from_version, to the OpenShift version represented by the MergedNode
     to_version.
+    First try to find a path without risks. If one is found, return it.
+    If no path without risks can be found, try again allowing risks.
     """
     source = merged_cat.get_node_by_version(from_version)
     target = merged_cat.get_node_by_version(to_version)
-    prev = analyse_dijkstra(merged_cat, source)
-    shortest = build_shortest_path(prev, source, target)
-    return shortest
+    logger.debug("Looking for a risk-free path...")
+    path = shortest_path_risks(merged_cat, source, target, allow_risks=False)
+    if path:
+        return path
+    logger.debug("No risk-free path found. Trying again allowing risks...")
+    return shortest_path_risks(merged_cat, source, target, allow_risks=False)
 
 
 def path_equals(path1, path2):
@@ -159,11 +177,27 @@ def path_equals(path1, path2):
     return True
 
 
-def dump_path(p):
+def dump_risk(risk):
+    print(f"Risk {risk.name()}: {risk.description()}. See: {risk.url()}")
+
+
+def dump_path(merged_cat, p):
     """
     Output a textual representation of the given upgrade path.
     """
-    print(" -> ".join(node.version() for node in p))
+    for i in range(1, len(p)):
+        source = p[i - 1]
+        dest = p[i]
+        edge = source.get_edge_to_node(dest)
+        channel_names = edge.channel_names()
+        if len(channel_names) == 1:
+            print(f"Set channel to {channel_names[0]}")
+        else:
+            print(f"Set channel to any one of: {' '.join(channel_names)}")
+        risks = edge.risks()
+        print(f"Upgrade from {source.version()} to {dest.version()}")
+        for risk in risks:
+            dump_risk(risk)
 
 
 def run_tests(merged_cat):
@@ -231,10 +265,10 @@ if __name__ == "__main__":
     path = shortest_path(merged_catalog, args.from_version, args.to_version)
     if len(path):
         print(
-            "The shortest upgrade path from OpenShift version "
+            "One of the (possibly many) shortest upgrade paths from OpenShift version "
             f"{args.from_version} to version {args.to_version} is:"
         )
-        dump_path(path)
+        dump_path(merged_catalog, path)
     else:
         print(
             "There is no upgrade path from OpenShift version "

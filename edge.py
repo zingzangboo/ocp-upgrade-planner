@@ -51,10 +51,10 @@ class Edge:
         """
         return self._risks
 
-    def set_risks(self, risks):
+    def add_risks(self, risks):
         """
-        Set the risks associated with the OpenShift upgrade represented by
-        this Edge.
-        This over-writes any existing risks.
+        Add the given array of risks to the set of risks associated with the
+        OpenShift upgrade represented by this Edge.
         """
+        assert self._risks is None
         self._risks = risks

@@ -1,8 +1,11 @@
 """
 channel.py
 """
+import logging
 from node import Node
 from edge import Edge
+from risk import Risk
+logger = logging.getLogger(__name__)
 
 
 class Channel:
@@ -66,40 +69,43 @@ class Channel:
 
     def _merge_conditional_edges(self):
         """
-        Merge the conditionalEdges into the Edges.
-        Because there is duplication, there could be inconsistency.
-        Find, warn about, and fix any inconsistencies found.
+        Merge the ConditionalEdges into the Edges.
+        The only difference between Edges and ConditionalEdges seems to be
+        that ConditionalEdges have risks and Edges don't.
+        We can model this as an optional attribute 'risks'.
+        By Occam's Razor, we shouldn't create a whole new entity.
         """
-        for conditional_edge_object in self._json['conditionalEdges']:
-            cond_obj_edges = conditional_edge_object['edges']
-            risks = conditional_edge_object['risks']
-            # Do not fail CI merely because of a to-do list item.
-            # pylint: disable=fixme
-            # TODO: Factor out the risks into a separate list, instead of
-            # copying them into each Edge.
-            # Also, there may be duplication of the same risks across
-            # different conditionalEdges/Channels/etc, which we should fix
-            # by merging them.
-            for cond_obj_edge in cond_obj_edges:
+        for conditional_edge_json in self._json['conditionalEdges']:
+            risks_json = conditional_edge_json['risks']
+            edges_json = conditional_edge_json['edges']
+            # We assume that Risk URLs uniquely define Risks
+            risks = {}
+            for risk_json in risks_json:
+                risk_name = risk_json['name']
+                risk_url = risk_json['url']
+                risk_message = risk_json['message']
+                risk = Risk(risk_name, risk_url, risk_message)
+                if risk_url in risks:
+                    raise ValueError("Duplicate Risks with URL {risk_url}")
+                risks[risk_url] = risk
+            for edge_json in edges_json:
                 (from_version, to_version) = (
-                    cond_obj_edge['from'], cond_obj_edge['to']
+                    edge_json['from'], edge_json['to']
                 )
                 existing_edge = self.get_edge_by_versions(
                     from_version, to_version
                 )
-                if existing_edge is None:
-                    # An edge that is in conditionalEdges, but not in edges.
-                    # Add it to edges with its risks.
+                if existing_edge:
+                    # Add the new Risks to the existing Edge
+                    existing_edge.add_risks(risks.values())
+                else:
+                    # Create a new Edge with the new Risks
                     from_node = self.get_node_by_version(from_version)
                     to_node = self.get_node_by_version(to_version)
-                    new_edge = Edge(self, from_node, to_node, risks)
+                    new_edge = Edge(self, from_node, to_node, risks.values())
                     self._edges.append(new_edge)
                     from_node.add_edge(new_edge)
                     to_node.add_edge(new_edge)
-                else:
-                    # An edge in conditionalEdges that was already seen
-                    # in edges. Add its risks to the existing edge.
-                    existing_edge.set_risks(risks)
 
     def _normalise_graph(self):
         self._add_nodes()

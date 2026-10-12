@@ -16,6 +16,7 @@ class MergedEdge:
         self._channels.add(channel)
         self._from_node = from_node
         self._to_node = to_node
+        self._risks = set()
 
     def __repr__(self):
         return (
@@ -28,6 +29,21 @@ class MergedEdge:
         Return a set of the channels that this merged edge exists in.
         """
         return self._channels
+
+    def channel_names(self):
+        """
+        Return the names of the channels that this merged edge exists in.
+        """
+        names = []
+        for channel in self.channels():
+            names.append(channel.name())
+        return names
+
+    def risks(self):
+        """
+        Return the set of Risks involved in this upgrade.
+        """
+        return self._risks
 
     def from_node(self):
         """
@@ -54,3 +70,4 @@ class MergedEdge:
         assert other_edge.from_node().version() == self.from_node().version()
         assert other_edge.to_node().version() == self.to_node().version()
         self._channels.add(other_edge.channel())
+        self._risks.update(other_edge.risks())

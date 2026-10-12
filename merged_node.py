@@ -195,6 +195,24 @@ class MergedNode:
         """
         return self._edges_to_me.values()
 
+    def get_edge_from_node(self, from_node):
+        for edge in self.edges_to():
+            assert edge.to_node() is self
+            if edge.from_node() is from_node:
+                return edge
+        raise ValueError(
+            f"No edge found from {repr(from_node)} to {repr(self)}"
+        )
+
+    def get_edge_to_node(self, to_node):
+        for edge in self.edges_from():
+            assert edge.from_node() is self
+            if edge.to_node() is to_node:
+                return edge
+        raise ValueError(
+            f"No edge found from {repr(self)} to {repr(to_node)}"
+        )
+
     def assert_valid(self):
         """
         Assert that this MergedNode is valid.
