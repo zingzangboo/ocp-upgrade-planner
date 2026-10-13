@@ -12,7 +12,7 @@ from collections import deque
 import argparse
 import logging
 from catalog import Catalog
-from merged_catalog import MergedCatalog
+from graph import Graph
 logger = logging.getLogger(__name__)
 
 # Do not fail CI merely because of a known issue.
@@ -42,12 +42,12 @@ def dump_catalog(cat):
                 logger.debug("        %s", repr(edge_from))
 
 
-def dump_merged_catalog(merged_cat):
+def dump_graph(graph):
     """
-    Output a textual representation of the given MergedCatalog.
+    Output a textual representation of the given Graph.
     """
-    logger.debug(repr(merged_cat))
-    for version in merged_cat.versions():
+    logger.debug(repr(graph))
+    for version in graph.versions():
         logger.debug("  %s", repr(version))
         logger.debug("    Upgrades to this version:")
         for upgrade_to in version.upgrades_to():
@@ -134,7 +134,7 @@ def build_shortest_path(prev, source, target):
 
 def shortest_path_risks(merged_cat, source, target, allow_risks=False):
     """
-    Given a MergedCatalog, use Djikstra's algorithm to find the shortest
+    Given a Graph, use Djikstra's algorithm to find the shortest
     upgrade path from the OpenShift version represented by the Version
     from_version, to the OpenShift version represented by the Version
     to_version, optionally allowing risks to be present.
@@ -146,7 +146,7 @@ def shortest_path_risks(merged_cat, source, target, allow_risks=False):
 
 def shortest_path(merged_cat, from_version, to_version, allow_risks=False):
     """
-    Given a MergedCatalog, use Djikstra's algorithm to find the shortest
+    Given a Graph, use Djikstra's algorithm to find the shortest
     upgrade path from the OpenShift version represented by the Version
     from_version, to the OpenShift version represented by the Version
     to_version.
@@ -255,18 +255,18 @@ if __name__ == "__main__":
     catalog.assert_valid()
     # dump_catalog(catalog)
     logger.info("Analysing downloaded catalogs...")
-    merged_catalog = MergedCatalog(catalog)
-    # dump_merged_catalog(merged_catalog)
-    merged_catalog.assert_valid()
-    # run_tests(merged_catalog)
+    graph = Graph(catalog)
+    # dump_graph(graph)
+    graph.assert_valid()
+    # run_tests(graph)
     logger.info("Calculating shortest path...")
-    path = shortest_path(merged_catalog, args.from_version, args.to_version)
+    path = shortest_path(graph, args.from_version, args.to_version)
     if len(path):
         print(
             "One of the (possibly many) shortest upgrade paths from OpenShift version "
             f"{args.from_version} to version {args.to_version} is:"
         )
-        dump_path(merged_catalog, path)
+        dump_path(graph, path)
     else:
         print(
             "There is no upgrade path from OpenShift version "

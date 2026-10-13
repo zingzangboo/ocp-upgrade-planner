@@ -1,56 +1,56 @@
 """
-merged_catalog.py
+graph.py
 """
 from version import Version
 
 
-class MergedCatalog:
+class Graph:
     """
-    A MergedCatalog represents the merged/de-duplicated version of a Catalog,
+    A Graph represents the merged/de-duplicated version of a Catalog,
     wherein all nodes and edges in all channels in the catalog have been
     merged into Versions and Upgrades.
     """
 
     def __init__(self, catalog):
         self._catalog = catalog
-        self._build_merged_catalog()
+        self._build_graph()
 
-    def _build_merged_catalog(self):
+    def _build_graph(self):
         """
-        Build the set of merged nodes
+        Build the set of Versions
         """
         self._version_string_to_version = {}
         for channel in self.catalog().channels():
             for node in channel.nodes():
-                version_string = node.version()
-                if version_string in self._version_string_to_version:
+                version = node.version()
+                if version in self._version_string_to_version:
                     existing_version = self._version_string_to_version[
-                        version_string
+                        version
                     ]
                     existing_version.merge_in_node(node)
                 else:
                     new_version = Version(node)
-                    self._version_string_to_version[version_string] = new_version
+                    self._version_string_to_version[version] = new_version
         for channel in self.catalog().channels():
             for node in channel.nodes():
-                version_string = self.get_version_by_node(node)
-                version_string.merge_edges(self, node)
+                version = self.get_version_by_node(node)
+                version.merge_edges(self, node)
 
     def catalog(self):
         """
-        Return the catalog that this MergedCatalog was created from.
+        Return the catalog that this Graph was created from.
         """
         return self._catalog
 
     def versions(self):
         """
-        Return a list of all Versions in this MergedCatalog.
+        Return a list of all Versions in this Graph.
         """
         return self._version_string_to_version.values()
 
     def assert_valid(self):
         """
-        Assert that this MergedCatalog is valid.
+        Assert that this Graph is valid.
         """
         assert len(self.versions()) > 0
         for version in self.versions():
@@ -59,13 +59,13 @@ class MergedCatalog:
     def get_version(self, version_string):
         """
         Given an OpenShift version string, return the Version that
-        represents that version in this MergedCatalog.
+        represents that version in this Graph.
         """
         return self._version_string_to_version.get(version_string)
 
     def upgrades(self):
         """
-        Enumerate all of the Upgrades in this MergedCatalog.
+        Enumerate all of the Upgrades in this Graph.
         This represents every possible OpenShift upgrade path
         known to the catalog.
         """
@@ -76,7 +76,7 @@ class MergedCatalog:
     def get_version_by_node(self, node):
         """
         Given a Node representing an OpenShift version, return the Version
-        that represents that version in this MergedCatalog.
+        that represents that version in this Graph.
         """
         version = self.get_version(node.version())
         assert version is not None
