@@ -47,14 +47,14 @@ def dump_merged_catalog(merged_cat):
     Output a textual representation of the given MergedCatalog.
     """
     logger.debug(repr(merged_cat))
-    for merged_node in merged_cat.merged_nodes():
-        logger.debug("  %s", repr(merged_node))
-        logger.debug("    Edges to this node:")
-        for edge_to in merged_node.edges_to():
-            logger.debug("      %s", repr(edge_to))
-        logger.debug("    Edges from this node:")
-        for edge_from in merged_node.edges_from():
-            logger.debug("      %s", repr(edge_from))
+    for version in merged_cat.versions():
+        logger.debug("  %s", repr(version))
+        logger.debug("    Upgrades to this version:")
+        for upgrade_to in version.upgrades_to():
+            logger.debug("      %s", repr(upgrade_to))
+        logger.debug("    Upgrades from this version:")
+        for upgrade_from in version.upgrades_from():
+            logger.debug("      %s", repr(upgrade_from))
 
 
 # Hopefully, no OpenShift upgrade path ever contains this many steps!
@@ -64,7 +64,7 @@ INFINITY = 100000
 def distance(edge):
     """
     Return the 'distance' between the versions of OpenShift represented by
-    the given MergedEdge.
+    the given Upgrade.
     Existence of risks causes a much larger distance.
     """
     return 1000 if edge.risks() else 1
@@ -72,8 +72,8 @@ def distance(edge):
 
 def find_min(q, dist):
     """
-    Given a set of MergedNodes q and a set of distances dist,
-    find the MergedNode in q with minimal dist[q].
+    Given a set of Versions q and a set of distances dist,
+    find the Version in q with minimal dist[q].
     """
     min_node = None
     min_dist = 0
@@ -94,7 +94,7 @@ def analyse_dijkstra(graph, source, allow_risks):
     dist = {}
     prev = {}
     q = set()
-    for v in graph.merged_nodes():
+    for v in graph.versions():
         dist[v] = INFINITY
         prev[v] = None
         q.add(v)
@@ -103,11 +103,11 @@ def analyse_dijkstra(graph, source, allow_risks):
     while len(q) > 0:
         u = find_min(q, dist)
         q.remove(u)
-        for edge in graph.edges():
-            if edge.risks() and not allow_risks:
+        for upgrade in graph.upgrades():
+            if upgrade.risks() and not allow_risks:
                 continue
-            (u, v) = (edge.from_node(), edge.to_node())
-            alt = dist[u] + distance(edge)
+            (u, v) = (upgrade.from_version(), upgrade.to_version())
+            alt = dist[u] + distance(upgrade)
             if alt < dist[v]:
                 dist[v] = alt
                 logger.debug(
@@ -120,8 +120,8 @@ def build_shortest_path(prev, source, target):
     """
     Given a previously-analysed upgrade graph, use Djikstra's algorithm
     to find the shortest upgrade path from the OpenShift version represented
-    by the MergedNode source, to the OpenShift version represented by the
-    MergedNode target.
+    by the Version source, to the OpenShift version represented by the
+    Version target.
     """
     seq = deque()
     u = target
@@ -135,8 +135,8 @@ def build_shortest_path(prev, source, target):
 def shortest_path_risks(merged_cat, source, target, allow_risks=False):
     """
     Given a MergedCatalog, use Djikstra's algorithm to find the shortest
-    upgrade path from the OpenShift version represented by the MergedNode
-    from_version, to the OpenShift version represented by the MergedNode
+    upgrade path from the OpenShift version represented by the Version
+    from_version, to the OpenShift version represented by the Version
     to_version, optionally allowing risks to be present.
     """
     prev = analyse_dijkstra(merged_cat, source, allow_risks)
@@ -147,14 +147,14 @@ def shortest_path_risks(merged_cat, source, target, allow_risks=False):
 def shortest_path(merged_cat, from_version, to_version, allow_risks=False):
     """
     Given a MergedCatalog, use Djikstra's algorithm to find the shortest
-    upgrade path from the OpenShift version represented by the MergedNode
-    from_version, to the OpenShift version represented by the MergedNode
+    upgrade path from the OpenShift version represented by the Version
+    from_version, to the OpenShift version represented by the Version
     to_version.
     First try to find a path without risks. If one is found, return it.
     If no path without risks can be found, try again allowing risks.
     """
-    source = merged_cat.get_node_by_version(from_version)
-    target = merged_cat.get_node_by_version(to_version)
+    source = merged_cat.get_version(from_version)
+    target = merged_cat.get_version(to_version)
     logger.debug("Looking for a risk-free path...")
     path = shortest_path_risks(merged_cat, source, target, allow_risks=False)
     if path:
@@ -186,13 +186,13 @@ def dump_path(merged_cat, p):
     for i in range(1, len(p)):
         source = p[i - 1]
         dest = p[i]
-        edge = source.get_edge_to_node(dest)
-        channel_names = edge.channel_names()
+        upgrade = source.get_upgrade_to_version(dest)
+        channel_names = upgrade.channel_names()
         if len(channel_names) == 1:
             print(f"Set channel to {channel_names[0]}")
         else:
             print(f"Set channel to any one of: {' '.join(channel_names)}")
-        risks = edge.risks()
+        risks = upgrade.risks()
         print(f"Upgrade from {source.version()} to {dest.version()}")
         for risk in risks:
             dump_risk(risk)

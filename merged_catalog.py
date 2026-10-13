@@ -19,20 +19,22 @@ class MergedCatalog:
         """
         Build the set of merged nodes
         """
-        self._version_to_node = {}
+        self._version_string_to_version = {}
         for channel in self.catalog().channels():
             for node in channel.nodes():
-                version = node.version()
-                if version in self._version_to_node:
-                    existing_merged_node = self._version_to_node[version]
-                    existing_merged_node.merge_in_node(node)
+                version_string = node.version()
+                if version_string in self._version_string_to_version:
+                    existing_version = self._version_string_to_version[
+                        version_string
+                    ]
+                    existing_version.merge_in_node(node)
                 else:
-                    new_merged_node = Version(node)
-                    self._version_to_node[version] = new_merged_node
+                    new_version = Version(node)
+                    self._version_string_to_version[version_string] = new_version
         for channel in self.catalog().channels():
             for node in channel.nodes():
-                merged_node = self.get_merged_node_by_node(node)
-                merged_node.merge_edges(self, node)
+                version_string = self.get_version_by_node(node)
+                version_string.merge_edges(self, node)
 
     def catalog(self):
         """
@@ -40,42 +42,42 @@ class MergedCatalog:
         """
         return self._catalog
 
-    def merged_nodes(self):
+    def versions(self):
         """
         Return a list of all Versions in this MergedCatalog.
         """
-        return self._version_to_node.values()
+        return self._version_string_to_version.values()
 
     def assert_valid(self):
         """
         Assert that this MergedCatalog is valid.
         """
-        assert len(self.merged_nodes()) > 0
-        for merged_node in self.merged_nodes():
-            merged_node.assert_valid()
+        assert len(self.versions()) > 0
+        for version in self.versions():
+            version.assert_valid()
 
-    def get_node_by_version(self, version):
+    def get_version(self, version_string):
         """
         Given an OpenShift version string, return the Version that
         represents that version in this MergedCatalog.
         """
-        return self._version_to_node.get(version)
+        return self._version_string_to_version.get(version_string)
 
-    def edges(self):
+    def upgrades(self):
         """
-        Enumerate all of the MergedEdges in this MergedCatalog.
+        Enumerate all of the Upgrades in this MergedCatalog.
         This represents every possible OpenShift upgrade path
         known to the catalog.
         """
-        for merged_node in self.merged_nodes():
-            yield from merged_node.edges_to()
-            yield from merged_node.edges_from()
+        for version in self.versions():
+            yield from version.upgrades_to()
+            yield from version.upgrades_from()
 
-    def get_merged_node_by_node(self, node):
+    def get_version_by_node(self, node):
         """
         Given a Node representing an OpenShift version, return the Version
         that represents that version in this MergedCatalog.
         """
-        merged_node = self.get_node_by_version(node.version())
-        assert merged_node is not None
-        return merged_node
+        version = self.get_version(node.version())
+        assert version is not None
+        return version

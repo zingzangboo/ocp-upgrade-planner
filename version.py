@@ -2,7 +2,7 @@
 version.py
 """
 import logging
-from merged_edge import MergedEdge
+from upgrade import Upgrade
 logger = logging.getLogger(__name__)
 FIRST_RELEASE_VERSION = '4.1.0'
 
@@ -29,9 +29,9 @@ class Version:
         self._channel_names = node.channel_names()
         self._manifest = node.manifest()
         self._url = node.url()
-        # These are maps from version to the MergedEdge object
-        self._edges_to_me = {}
-        self._edges_from_me = {}
+        # These are maps from version to the Upgrade object
+        self._upgrades_to_me = {}
+        self._upgrades_from_me = {}
         self.merge_in_node(node)
 
     def __repr__(self):
@@ -132,85 +132,85 @@ class Version:
     def merge_edges(self, catalog, other_node):
         """
         Merge the set of Edges to/from the given Node into the set of
-        MergedEdges to/from this Version.
+        Upgrades to/from this Version.
         """
         assert other_node.version() == self.version()
         self.merge_edges_to(catalog, other_node)
         self.merge_edges_from(catalog, other_node)
 
-    def merge_edges_to(self, catalog, other_node):
+    def merge_edges_to(self, catalog, node):
         """
         Merge the set of Edges to the given Node into the set of
-        MergedEdges to this Version.
+        Upgrades to this Version.
         """
-        assert other_node.version() == self.version()
-        for edge_to_me in other_node.edges_to():
-            assert edge_to_me.to_node() is other_node
+        assert node.version() == self.version()
+        for edge_to_me in node.edges_to():
+            assert edge_to_me.to_node() is node
             assert edge_to_me.to_node().version() == self.version()
             from_node = edge_to_me.from_node()
             from_node_version = from_node.version()
-            if from_node_version in self._edges_to_me:
-                existing_merged_edge = self._edges_to_me[from_node_version]
-                existing_merged_edge.merge_in_edge(edge_to_me)
+            if from_node_version in self._upgrades_to_me:
+                existing_upgrade = self._upgrades_to_me[from_node_version]
+                existing_upgrade.merge_in_edge(edge_to_me)
             else:
                 channel = edge_to_me.channel()
-                merged_from_node = catalog.get_merged_node_by_node(from_node)
-                new_merged_edge = MergedEdge(channel, merged_from_node, self)
-                self._edges_to_me[from_node_version] = new_merged_edge
+                merged_from_node = catalog.get_version_by_node(from_node)
+                new_upgrade = Upgrade(channel, merged_from_node, self)
+                self._upgrades_to_me[from_node_version] = new_upgrade
 
-    def merge_edges_from(self, catalog, other_node):
+    def merge_edges_from(self, catalog, node):
         """
         Merge the set of Edges from the given Node into the set of
-        MergedEdges from this Version.
+        Upgrades from this Version.
         """
-        assert other_node.version() == self.version()
-        for edge_from_me in other_node.edges_from():
-            assert edge_from_me.from_node() is other_node
+        assert node.version() == self.version()
+        for edge_from_me in node.edges_from():
+            assert edge_from_me.from_node() is node
             assert edge_from_me.from_node().version() == self.version()
             to_node = edge_from_me.to_node()
             to_node_version = to_node.version()
-            if to_node_version in self._edges_from_me:
-                existing_merged_edge = self._edges_from_me[to_node_version]
-                existing_merged_edge.merge_in_edge(edge_from_me)
+            if to_node_version in self._upgrades_from_me:
+                existing_upgrade = self._upgrades_from_me[to_node_version]
+                existing_upgrade.merge_in_edge(edge_from_me)
             else:
                 channel = edge_from_me.channel()
-                merged_to_node = catalog.get_merged_node_by_node(to_node)
-                new_merged_edge = MergedEdge(channel, self, merged_to_node)
-                self._edges_from_me[to_node_version] = new_merged_edge
+                merged_to_node = catalog.get_version_by_node(to_node)
+                new_upgrade = Upgrade(channel, self, merged_to_node)
+                self._upgrades_from_me[to_node_version] = new_upgrade
 
-    def edges_from(self):
+    def upgrades_from(self):
         """
-        Return the set of MergedEdges that lead away from this Version,
+        Return the set of Upgrades that lead away from this Version,
         ie the set of all possible upgrade paths directly from the OpenShift
         version represented by this Version to other versions of OpenShift.
         """
-        return self._edges_from_me.values()
+        return self._upgrades_from_me.values()
 
-    def edges_to(self):
+    def upgrades_to(self):
         """
-        Return the set of MergedEdges that lead to this Version,
+        Return the set of Upgrades that lead to this Version,
         ie the set of all possible upgrade paths directly from some other
         OpenShift version to the OpenShift version represented by this
         Version.
         """
-        return self._edges_to_me.values()
+        return self._upgrades_to_me.values()
 
-    def get_edge_from_node(self, from_node):
-        for edge in self.edges_to():
-            assert edge.to_node() is self
-            if edge.from_node() is from_node:
-                return edge
+    def get_upgrade_from_version(self, from_version):
+        for upgrade in self.upgrades_to():
+            assert upgrade.to_version() is self
+            if upgrade.from_version() is from_version:
+                return upgrade
         raise ValueError(
-            f"No edge found from {repr(from_node)} to {repr(self)}"
+            f"No edge found from {repr(from_version)} to {repr(self)}"
         )
 
-    def get_edge_to_node(self, to_node):
-        for edge in self.edges_from():
-            assert edge.from_node() is self
-            if edge.to_node() is to_node:
-                return edge
+    def get_upgrade_to_version(self, to_version):
+        for upgrade in self.upgrades_from():
+            assert upgrade.from_version() is self
+            if upgrade.to_version() is to_version:
+                return upgrade
         raise ValueError(
-            f"No edge found from {repr(self)} to {repr(to_node)}"
+            f"No edge found from {repr(self)} to {repr(to_version)}"
         )
 
     def assert_valid(self):
