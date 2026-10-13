@@ -61,15 +61,13 @@ def dump_merged_catalog(merged_cat):
 INFINITY = 100000
 
 
-# I intend to use these parameters at some stage.
-# pylint: disable=unused-argument
-def distance(u, v):
+def distance(edge):
     """
     Return the 'distance' between the versions of OpenShift represented by
-    the given MergedVersions.
-    TODO: Make this larger if there exist risks, than if there do not.
+    the given MergedEdge.
+    Existence of risks causes a much larger distance.
     """
-    return 1
+    return 1000 if edge.risks() else 1
 
 
 def find_min(q, dist):
@@ -109,7 +107,7 @@ def analyse_dijkstra(graph, source, allow_risks):
             if edge.risks() and not allow_risks:
                 continue
             (u, v) = (edge.from_node(), edge.to_node())
-            alt = dist[u] + distance(u, v)
+            alt = dist[u] + distance(edge)
             if alt < dist[v]:
                 dist[v] = alt
                 logger.debug(
