@@ -1,8 +1,7 @@
 """
 catalog.py
 """
-from catalog_cache import CatalogCache
-from channel_cache import ChannelCache
+from cincinnati_client import CincinnatiClient
 from channel import Channel
 
 
@@ -12,13 +11,11 @@ class Catalog:
     """
 
     def __init__(self, architecture):
-        self._architecture = architecture
-        self._catalog_cache = CatalogCache(self.architecture())
-        self._channel_cache = ChannelCache(self.architecture())
+        self._client = CincinnatiClient(architecture)
         self._channels = []
         self._channels_by_name = {}
         for channel_name in self.channel_names():
-            channel_json = self._channel_cache.get_channel_data(channel_name)
+            channel_json = self._client.get_channel(channel_name)
             channel = Channel(channel_name, channel_json)
             self._channels.append(channel)
             self._channels_by_name[channel.name()] = channel
@@ -32,13 +29,13 @@ class Catalog:
         Consequently, a given version of OpenShift may not be specific to a
         single architecture.
         """
-        return self._architecture
+        return self._client.architecture()
 
     def channel_names(self):
         """
         Return the names of this Channels in this Catalog.
         """
-        return self._catalog_cache.get_channel_names()
+        return self._client.get_channel_names()
 
     def get_channel_by_name(self, channel_name):
         """
