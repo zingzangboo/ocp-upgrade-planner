@@ -1,14 +1,14 @@
 """
 merged_catalog.py
 """
-from merged_node import MergedNode
+from version import Version
 
 
 class MergedCatalog:
     """
     A MergedCatalog represents the merged/de-duplicated version of a Catalog,
     wherein all nodes and edges in all channels in the catalog have been
-    merged.
+    merged into Versions and Upgrades.
     """
 
     def __init__(self, catalog):
@@ -27,7 +27,7 @@ class MergedCatalog:
                     existing_merged_node = self._version_to_node[version]
                     existing_merged_node.merge_in_node(node)
                 else:
-                    new_merged_node = MergedNode(node)
+                    new_merged_node = Version(node)
                     self._version_to_node[version] = new_merged_node
         for channel in self.catalog().channels():
             for node in channel.nodes():
@@ -42,7 +42,7 @@ class MergedCatalog:
 
     def merged_nodes(self):
         """
-        Return a list of all MergedNodes in this MergedCatalog.
+        Return a list of all Versions in this MergedCatalog.
         """
         return self._version_to_node.values()
 
@@ -56,7 +56,7 @@ class MergedCatalog:
 
     def get_node_by_version(self, version):
         """
-        Given an OpenShift version string, return the MergedNode that
+        Given an OpenShift version string, return the Version that
         represents that version in this MergedCatalog.
         """
         return self._version_to_node.get(version)
@@ -73,7 +73,7 @@ class MergedCatalog:
 
     def get_merged_node_by_node(self, node):
         """
-        Given a Node representing an OpenShift version, return the MergedNode
+        Given a Node representing an OpenShift version, return the Version
         that represents that version in this MergedCatalog.
         """
         merged_node = self.get_node_by_version(node.version())

@@ -1,5 +1,5 @@
 """
-merged_node.py
+version.py
 """
 import logging
 from merged_edge import MergedEdge
@@ -10,14 +10,14 @@ FIRST_RELEASE_VERSION = '4.1.0'
 # It is not my fault that this entity has many attributes,
 # and there is nothing I can do about it.
 # pylint: disable=too-many-instance-attributes
-class MergedNode:
+class Version:
     """
-    A MergedNode represents a particular version of OpenShift.
+    A Version represents a particular version of OpenShift.
     Any given OpenShift version can be present in multiple channels.
-    This means that multiple semantically equivalent Node objects may
+    This means that multiple semantically equivalent Version objects may
     be present in different Channel objects.
-    Class MergedNode represents a unique OpenShift version, merged from
-    the multiple Node objects referring to that version.
+    Class Version represents a unique OpenShift version, merged from
+    the multiple Node objects referring to that version of OpenShift.
     While merging the duplicate nodes, we also check that they are consistent
     with each other.
     """
@@ -35,25 +35,25 @@ class MergedNode:
         self.merge_in_node(node)
 
     def __repr__(self):
-        return f"MergedNode({self.version()})"
+        return f"Version({self.version()})"
 
     def version(self):
         """
-        Return the version of OpenShift represented by this MergedNode.
+        Return the version of OpenShift represented by this Version.
         """
         return self._version
 
     def payload(self):
         """
         Return the image pull URL for the release image for the version of
-        OpenShift represented by this MergedNode.
+        OpenShift represented by this Version.
         """
         return self._payload
 
     def description(self):
         """
         Return the description of the OpenShift version represented by this
-        MergedNode, if there is one, or the empty string otherwise.
+        Version, if there is one, or the empty string otherwise.
         At time of writing, almost all OpenShift versions had no description.
         """
         return self._description
@@ -61,7 +61,7 @@ class MergedNode:
     def channel_names(self):
         """
         Return an array of the names of the channels that contain the
-        OpenShift version represented by this MergedNode.
+        OpenShift version represented by this Version.
         This information comes from an attribute of the Node in the API,
         so it duplicates the actual presence/absence of Nodes in Channels
         in the API, so inconsistencies are possible.
@@ -71,13 +71,13 @@ class MergedNode:
     def manifest(self):
         """
         Return the image digest for the release image for the version of
-        OpenShift represented by this MergedNode.
+        OpenShift represented by this Version.
         """
         return self._manifest
 
     def url(self):
         """
-        If the OpenShift version that this MergedNode represents has a URL,
+        If the OpenShift version that this Version represents has a URL,
         return that URL.
         Otherwise, return None.
         When they are present, these URLs often refer to security advisories,
@@ -85,54 +85,54 @@ class MergedNode:
         """
         return self._url
 
-    def merge_in_node(self, other_node):
+    def merge_in_node(self, node):
         """
-        Merge the information from the given Node into this MergedNode.
+        Merge the information from the given Node into this Version.
         Information that must be consistent is checked for consistency.
         Channel names are added, ie a setwise union is performed.
         """
         # Detect conflicting versions
-        if other_node.version() != self.version():
+        if node.version() != self.version():
             raise ValueError(
-                f"Cannot merge node for version {other_node.version()} "
-                f"into MergedNode for version {self.version()}"
+                f"Cannot merge node for version {node.version()} "
+                f"into Version for version {self.version()}"
             )
         # Detect conflicting payloads
-        if other_node.payload() != self.payload():
+        if node.payload() != self.payload():
             raise ValueError(
-                f"Node for version {other_node.version()} has payload "
-                f"{other_node.payload()}, but MergedNode for version "
+                f"Node for version {node.version()} has payload "
+                f"{node.payload()}, but Version for version "
                 "{self.version()} has payload {self.payload()}"
             )
         # Detect conflicting descriptions
-        if other_node.description() != self.description():
+        if node.description() != self.description():
             raise ValueError(
-                f"Node for version {other_node.version()} has description "
-                f"{other_node.description()}, but MergedNode for version "
+                f"Node for version {node.version()} has description "
+                f"{node.description()}, but Version for version "
                 f"{self.version()} has description {self.description()}"
             )
         # Merge channel names (which are expected to differ)
-        self._channel_names.update(other_node.channel_names())
+        self._channel_names.update(node.channel_names())
         # Detect conflicting manifests
-        if other_node.manifest() != self.manifest():
+        if node.manifest() != self.manifest():
             raise ValueError(
-                f"Node for version {other_node.version()} has manifest "
-                f"{other_node.manifest()}, but MergedNode for version "
+                f"Node for version {node.version()} has manifest "
+                f"{node.manifest()}, but Version for version "
                 f"{self.version()} has manifest {self.manifest()}"
             )
         # Detect conflicting urls
-        if other_node.url() != self.url():
+        if node.url() != self.url():
             raise ValueError(
-                f"Node for version {other_node.version()} has url "
-                f"{other_node.url()}, "
-                f"but MergedNode for version {self.version()} has url "
+                f"Node for version {node.version()} has url "
+                f"{node.url()}, "
+                f"but Version for version {self.version()} has url "
                 f"{self.url()}"
             )
 
     def merge_edges(self, catalog, other_node):
         """
         Merge the set of Edges to/from the given Node into the set of
-        MergedEdges to/from this MergedNode.
+        MergedEdges to/from this Version.
         """
         assert other_node.version() == self.version()
         self.merge_edges_to(catalog, other_node)
@@ -141,7 +141,7 @@ class MergedNode:
     def merge_edges_to(self, catalog, other_node):
         """
         Merge the set of Edges to the given Node into the set of
-        MergedEdges to this MergedNode.
+        MergedEdges to this Version.
         """
         assert other_node.version() == self.version()
         for edge_to_me in other_node.edges_to():
@@ -161,7 +161,7 @@ class MergedNode:
     def merge_edges_from(self, catalog, other_node):
         """
         Merge the set of Edges from the given Node into the set of
-        MergedEdges from this MergedNode.
+        MergedEdges from this Version.
         """
         assert other_node.version() == self.version()
         for edge_from_me in other_node.edges_from():
@@ -180,18 +180,18 @@ class MergedNode:
 
     def edges_from(self):
         """
-        Return the set of MergedEdges that lead away from this MergedNode,
+        Return the set of MergedEdges that lead away from this Version,
         ie the set of all possible upgrade paths directly from the OpenShift
-        version represented by this MergedNode to other versions of OpenShift.
+        version represented by this Version to other versions of OpenShift.
         """
         return self._edges_from_me.values()
 
     def edges_to(self):
         """
-        Return the set of MergedEdges that lead to this MergedNode,
+        Return the set of MergedEdges that lead to this Version,
         ie the set of all possible upgrade paths directly from some other
         OpenShift version to the OpenShift version represented by this
-        MergedNode.
+        Version.
         """
         return self._edges_to_me.values()
 
@@ -215,7 +215,7 @@ class MergedNode:
 
     def assert_valid(self):
         """
-        Assert that this MergedNode is valid.
+        Assert that this Version is valid.
         """
         # We would like to be able to assert this, but we can't, because the
         # API claims there are no upgrade paths to some versions.
